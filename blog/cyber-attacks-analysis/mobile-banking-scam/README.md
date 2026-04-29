@@ -80,3 +80,71 @@ The malware's operational capability is entirely dependent on the permissions it
 | `INTERNET`	| MEDIUM	| Required for all C2 communication, exfiltrating harvested data, receiving commands, and streaming screen data to the attacker. |
 | `RECEIVE_BOOT_COMPLETED` | LOW	| Ensures the malware process restarts automatically when the device is rebooted, maintaining persistence. |
 
+## 4. Technical Breakdown of the Attack Chain
+
+### 4.1 The Accessibility Service — The Master Key
+
+The *Android Accessibility Service* was designed to assist users with disabilities by enabling screen readers and alternative input methods. However, its architecture provides an application with capabilities that are functionally equivalent to having complete, persistent access to the device's screen and input system. From a security perspective, granting Accessibility Service permission to an untrusted application is equivalent to handing the attacker a keyboard and a live camera feed of your screen.
+
+Specifically, through the Accessibility Service API, the malicious application can:
+
+- Register an `AccessibilityServiceInfo` listener that triggers on events across any application
+-	Invoke `performGlobalAction()` to simulate the Back, Home, and Recents buttons
+-	Call `performAction()` on specific UI nodes, equivalent to tapping any button on screen
+-	Use  `findAccessibilityNodeInfosByText()` to locate and read text fields, including password fields in some implementations
+-	Set text in input fields using `ACTION_SET_TEXT`, allowing automated form filling
+-	Read the full UI tree of any open application, extracting account numbers, balances, and transaction details
+
+#### CRITICAL TECHNICAL INSIGHT
+
+Android's security model is fundamentally app-sandboxed: apps cannot normally read the memory or UI of other apps. The Accessibility Service is an officially supported exception to this rule, creating a legitimate API that provides exactly the cross-application access that an attacker needs. This is not a vulnerability in the traditional sense but a feature being weaponized.
+
+### 4.2 Biometric Authentication Bypass — Three Techniques
+
+The most counterintuitive aspect of this attack for laypeople is how biometric security — fingerprint and face recognition — fails to prevent the fraud. The answer is that the attacker never attempts to defeat the biometric lock. Instead, three distinct techniques are employed to work entirely around it:
+
+#### 4.2.1 Technique A — Session Hijacking (Authenticated Window Exploitation)
+
+Most mobile banking applications maintain an authenticated session for several minutes after the user closes the app (without logging out). This is by design, as requiring re-authentication on every screen transition would be unusable. The malware exploits this authenticated window:
+
+-	The Accessibility Service listener detects when the user opens and uses the banking application
+-	When the user closes the app, the malware notes the timestamp
+-	Within the authenticated window (typically 3-10 minutes), the malware programmatically re-opens the banking application in the background
+-	Because the session is still active, no re-authentication (and therefore no biometric) is required
+-	The malware then uses Accessibility Service actions to navigate to the transfer function and initiate a transaction
+
+#### 4.2.2 Technique B — Real-Time Remote Access (RAT-Based)
+
+In more sophisticated deployments, the malicious application functions as a Remote Access Trojan, establishing a persistent connection to the attacker's C2 server and streaming the device screen in real time:
+
+-	The attacker monitors the live screen stream, waiting for the victim to unlock the banking application using their fingerprint
+-	Once the victim completes biometric authentication — legitimately — the attacker observes the active session
+-	The attacker then takes direct remote control of the device, using the already-authenticated session to perform transfers
+-	From the banking application's perspective, all interactions originate from the same device, through a legitimate session, initiated by legitimate user input — the fraud is architecturally indistinguishable from legitimate use
+
+#### 4.2.3 Technique C — Overlay Attack (Credential Harvesting)
+
+Using the `SYSTEM_ALERT_WINDOW` permission, the malware renders a pixel-perfect replica of the banking application's login screen over the real application. When the user attempts to open their banking app:
+
+-	The overlay is displayed instead of the real app
+-	The victim enters their PIN, MPIN, or password into the fake overlay
+-	These credentials are transmitted to the attacker's server
+-	The overlay dismisses itself, revealing the real app (or displaying a generic error)
+-	The attacker now possesses the banking credentials directly, enabling independent access without needing the victim's device at all
+
+4.3 OTP Interception — The Final Lock Bypassed
+The One-Time Password is the last defensive mechanism between an attacker and a completed fraudulent transfer. Its interception is, technically, the simplest part of the entire operation, because the device that receives the OTP is the same device that has been compromised.
+
+4.3.1 SMS-Based OTP Interception
+ATTACK FLOW:   Bank initiates transfer → Sends OTP via SMS to victim's number   SMS arrives on compromised device   Malware's BroadcastReceiver intercepts android.provider.Telephony.SMS_RECEIVED intent   OTP extracted via regex pattern matching (e.g., [0-9]{4,8})   OTP transmitted to C2 server via HTTPS in < 500ms   Attacker (or automated script) inputs OTP into banking session   Transfer authorized — funds moved
+
+On Android 9 and below, applications could directly register a BroadcastReceiver for incoming SMS messages with the READ_SMS permission. Google partially restricted this in Android 10+ by limiting which apps could be the default SMS handler, but the Accessibility Service remains capable of reading SMS notification content as it appears on the notification shade.
+
+4.3.2 Notification-Based OTP Interception
+When the bank delivers the OTP as a push notification (common with banking apps that have their own notification channel), the malware with Notification Access permission intercepts the notification object before it is dismissed. The NotificationListenerService API provides access to the full notification text, from which the OTP is extracted programmatically. This method works regardless of the Android version and bypasses the SMS access restrictions introduced in newer OS versions.
+
+4.3.3 Accessibility-Based Screen Reading
+As a fallback, even without SMS or notification access, if the OTP appears on screen — in a notification banner, in an SMS preview, or in any visible UI element — the Accessibility Service can read the text of any visible element on any screen. The malware continuously monitors accessibility events and uses pattern matching to detect and extract numeric strings matching OTP formats from any source.
+
+TIMELINE ANALYSIS
+From the moment the bank sends the OTP to the moment the transaction is authorized, the entire automated attack chain — interception, extraction, transmission, input, and confirmation — can complete in under 10 seconds. In many cases, the victim receives the debit SMS notification before they have even processed that an OTP was sent, as the notification arrives while the account has already been debited.
