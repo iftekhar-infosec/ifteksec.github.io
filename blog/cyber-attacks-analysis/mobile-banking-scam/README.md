@@ -64,3 +64,19 @@ The installation process requires the victim to enable 'Install from Unknown Sou
 - The malware process is configured to auto-start on device boot, ensuring persistence across restarts.
 - In more sophisticated variants, the malware periodically checks in with a C2 server to receive updated configuration, allowing the operator to modify its behavior or update evasion techniques remotely.
 
+### 3.3 Stage 3 — Permission Exploitation
+
+The malware's operational capability is entirely dependent on the permissions it acquires from the victim. The following table details the critical permissions requested and their specific offensive applications:
+
+| Permission | Risk Level	| Offensive Application |
+|------------|------------|-----------------------|
+| `Accessibility Service`	| CRITICAL	| Grants programmatic control over all UI elements across all applications. Enables reading screen content, simulating user inputs, intercepting text from any app, and detecting when specific applications are launched. This single permission is the cornerstone of the entire attack. |
+| `Device Administrator`	| CRITICAL	| Prevents uninstallation through normal means. Survives factory reset attempts on some device configurations. |
+| `Notification Access`	| HIGH	| Reads all incoming notifications in real time, including OTP delivery notifications from banking apps and SMS notifications, before the user sees them. |
+| `READ_SMS`	| HIGH	| Directly reads SMS messages from the device's inbox, providing access to OTP messages even if notifications are dismissed. |
+| `SYSTEM_ALERT_WINDOW` (Draw Over Apps)	| HIGH	| Renders invisible overlay windows on top of other applications. Used to display fake login screens over legitimate banking apps to harvest credentials. |
+| `READ_CONTACTS`	| MEDIUM	| Harvests the victim's contact list for use in secondary attacks, spreading malware to contacts or enabling targeted social engineering. |
+| `CAMERA / RECORD_AUDIO`	| MEDIUM	| Enables covert audio/video recording. Used for surveillance, verification bypass research, or extortion. |
+| `INTERNET`	| MEDIUM	| Required for all C2 communication, exfiltrating harvested data, receiving commands, and streaming screen data to the attacker. |
+| `RECEIVE_BOOT_COMPLETED` | LOW	| Ensures the malware process restarts automatically when the device is rebooted, maintaining persistence. |
+
