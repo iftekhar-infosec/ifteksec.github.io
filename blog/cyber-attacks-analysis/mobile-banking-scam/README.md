@@ -132,7 +132,8 @@ Using the `SYSTEM_ALERT_WINDOW` permission, the malware renders a pixel-perfect 
 -	The overlay dismisses itself, revealing the real app (or displaying a generic error)
 -	The attacker now possesses the banking credentials directly, enabling independent access without needing the victim's device at all
 
-4.3 OTP Interception — The Final Lock Bypassed
+#### 4.3 OTP Interception — The Final Lock Bypassed
+
 The One-Time Password is the last defensive mechanism between an attacker and a completed fraudulent transfer. Its interception is, technically, the simplest part of the entire operation, because the device that receives the OTP is the same device that has been compromised.
 
 4.3.1 SMS-Based OTP Interception
@@ -140,11 +141,14 @@ ATTACK FLOW:   Bank initiates transfer → Sends OTP via SMS to victim's number 
 
 On Android 9 and below, applications could directly register a BroadcastReceiver for incoming SMS messages with the READ_SMS permission. Google partially restricted this in Android 10+ by limiting which apps could be the default SMS handler, but the Accessibility Service remains capable of reading SMS notification content as it appears on the notification shade.
 
-4.3.2 Notification-Based OTP Interception
+#### 4.3.2 Notification-Based OTP Interception
+
 When the bank delivers the OTP as a push notification (common with banking apps that have their own notification channel), the malware with Notification Access permission intercepts the notification object before it is dismissed. The NotificationListenerService API provides access to the full notification text, from which the OTP is extracted programmatically. This method works regardless of the Android version and bypasses the SMS access restrictions introduced in newer OS versions.
 
-4.3.3 Accessibility-Based Screen Reading
-As a fallback, even without SMS or notification access, if the OTP appears on screen — in a notification banner, in an SMS preview, or in any visible UI element — the Accessibility Service can read the text of any visible element on any screen. The malware continuously monitors accessibility events and uses pattern matching to detect and extract numeric strings matching OTP formats from any source.
+#### 4.3.3 Accessibility-Based Screen Reading
 
-TIMELINE ANALYSIS
+As a fallback, even without SMS or notification access, if the OTP appears on screen, in a notification banner, in an SMS preview, or in any visible UI element, the Accessibility Service can read the text of any visible element on any screen. The malware continuously monitors accessibility events and uses pattern matching to detect and extract numeric strings matching OTP formats from any source.
+
+#### TIMELINE ANALYSIS
+
 From the moment the bank sends the OTP to the moment the transaction is authorized, the entire automated attack chain — interception, extraction, transmission, input, and confirmation — can complete in under 10 seconds. In many cases, the victim receives the debit SMS notification before they have even processed that an OTP was sent, as the notification arrives while the account has already been debited.
