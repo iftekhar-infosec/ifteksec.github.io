@@ -143,7 +143,7 @@ On Android 9 and below, applications could directly register a BroadcastReceiver
 
 #### 4.3.2 Notification-Based OTP Interception
 
-When the bank delivers the OTP as a push notification (common with banking apps that have their own notification channel), the malware with Notification Access permission intercepts the notification object before it is dismissed. The NotificationListenerService API provides access to the full notification text, from which the OTP is extracted programmatically. This method works regardless of the Android version and bypasses the SMS access restrictions introduced in newer OS versions.
+When the bank delivers the OTP as a push notification (common with banking apps that have their own notification channel), the malware with Notification Access permission intercepts the notification object before it is dismissed. The `NotificationListenerService` API provides access to the full notification text, from which the OTP is extracted programmatically. This method works regardless of the Android version and bypasses the SMS access restrictions introduced in newer OS versions.
 
 #### 4.3.3 Accessibility-Based Screen Reading
 
@@ -152,3 +152,35 @@ As a fallback, even without SMS or notification access, if the OTP appears on sc
 #### TIMELINE ANALYSIS
 
 From the moment the bank sends the OTP to the moment the transaction is authorized, the entire automated attack chain — interception, extraction, transmission, input, and confirmation — can complete in under 10 seconds. In many cases, the victim receives the debit SMS notification before they have even processed that an OTP was sent, as the notification arrives while the account has already been debited.
+
+## 5. Why Conventional Defenses Fail
+
+### 5.1 The Fundamental Architectural Problem
+
+The attack exploits a systemic tension within the Android security model: the OS must simultaneously prevent malicious cross-app access while enabling legitimate accessibility tools to assist users with disabilities. The Accessibility Service API resolves this tension by creating a permissioned exception that grants broad cross-application access when explicitly granted by the user. There is no technical distinction at the OS level between a legitimate screen reader for a visually impaired user and a malicious RAT exploiting the same API.
+
+| Defense Mechanism	| Why It Fails |
+|-------------------|--------------|
+| Biometric Lock (Fingerprint/Face ID)	| Protects against unauthorized access to the device. Does not protect against malware that operates after the victim has already authenticated. The biometric is defeated by the victim themselves performing a legitimate unlock, after which the attacker exploits the active session. |
+| OTP / Two-Factor Authentication	| Designed to prevent unauthorized access from a separate device using stolen credentials. Completely ineffective when the OTP delivery channel (the victim's phone) is the same compromised device executing the attack. The OTP is intercepted on the device before the victim can read it. |
+| Bank Transaction Anomaly Detection | Uses heuristics like device fingerprint, IP address, behavioral patterns, and geolocation to flag suspicious transactions. Fails because: the device is legitimate, the IP is the victim's real IP, the session is authenticated via real biometrics, and the behavioral pattern of using the app matches the victim's history, because the attack uses the same device. |
+| Google Play Protect	| Scans applications installed from the Play Store and known APK repositories. Completely bypassed by sideloaded APKs that have not been submitted to Google's scanning infrastructure. Signature-based detection also fails against newly compiled or obfuscated malware variants. |
+| App-Level PIN	| A secondary PIN within the banking application is bypassed through either the session hijacking technique (the PIN was already entered by the victim) or the overlay attack (the PIN is harvested via the fake UI). Accessibility Service can also read PIN inputs in some implementations. |
+| SSL/TLS Encryption | Protects data in transit between the banking app and the bank's servers. Entirely irrelevant to this attack, the attacker never sits between the app and the server. The attack occurs entirely on the device, before encryption is applied. |
+
+## 6. Illustrative Attack Scenarios
+
+### Scenario A — The Automated Silent Transfer
+
+A user in Dhaka sees a Facebook advertisement offering a free 50 GB data package from their mobile operator. They tap the ad, are redirected to a convincing webpage, and download and install the offered application, granting all requested permissions including Accessibility Service. The app shows a message saying 'offer applied' and appears to work.
+
+Later that evening, the user opens their bKash app, authenticates with their fingerprint, checks their balance, and closes the app. Forty-five seconds later, the malware detects the active session is still valid, programmatically reopens bKash in the background using Accessibility Service, navigates to 'Send Money,' enters a number controlled by a money mule, inputs the maximum allowed amount, and confirms the transaction. The bank sends an OTP — the malware intercepts it from the notification in 200 milliseconds, inputs it, and the transaction completes. The user receives a debit notification and is confused — they are not even looking at their phone.
+
+### Scenario B — The Remote-Operated RAT Attack
+
+A user installs a fake 'Nagad agent registration' application they saw shared in a Facebook group. The app is a functional SpyNote RAT. The attacker, monitoring connected devices on their C2 dashboard, sees the device come online. They observe via live screen stream that the user is about to open their bank's mobile app. When the user authenticates with their fingerprint, the attacker immediately takes remote control, initiates a transfer, and waits for the OTP. They read the OTP directly from the screen stream as it appears in the notification banner, input it manually, and confirm the transfer — all within 8 seconds of the OTP arriving.
+
+### Scenario C — The Credential Harvest + Delayed Attack
+
+A malware app with overlay capability detects when the victim attempts to open their Dutch-Bangla Bank mobile app. It immediately renders a pixel-perfect overlay of the app's login screen. The victim enters their account number, password, and MPIN into the fake screen. The credentials are transmitted to the attacker. The overlay displays a 'server error' message and dismisses. The attacker, now possessing full login credentials, accesses the account from their own device at a later time — potentially days later — bypassing the need to access the victim's phone at all.
+
