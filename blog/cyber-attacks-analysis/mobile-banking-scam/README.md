@@ -182,5 +182,34 @@ A user installs a fake 'Nagad agent registration' application they saw shared in
 
 ### Scenario C — The Credential Harvest + Delayed Attack
 
-A malware app with overlay capability detects when the victim attempts to open their Dutch-Bangla Bank mobile app. It immediately renders a pixel-perfect overlay of the app's login screen. The victim enters their account number, password, and MPIN into the fake screen. The credentials are transmitted to the attacker. The overlay displays a 'server error' message and dismisses. The attacker, now possessing full login credentials, accesses the account from their own device at a later time — potentially days later — bypassing the need to access the victim's phone at all.
+A malware app with overlay capability detects when the victim attempts to open their Dutch-Bangla Bank mobile app. It immediately renders a pixel-perfect overlay of the app's login screen. The victim enters their account number, username, and password into the fake screen. The credentials are transmitted to the attacker. The overlay displays a 'server error' message and dismisses. The attacker, now possessing full login credentials, accesses the account from their own device at a later time — potentially days later — bypassing the need to access the victim's phone at all.
+
+## 7. Detection — How to Know If You Are Compromised
+
+Malware of this type is designed to operate silently and is often difficult to detect through routine use. However, several indicators may suggest compromise:
+
+### 7.1 Device Behavioral Indicators
+
+- Unexpected rapid battery drain: background processes including screen streaming, C2 communication, and continuous monitoring consume significant power
+- Elevated data consumption: particularly for mobile data, as screen streams and exfiltrated data are transmitted continuously
+- Device heating without active use: background CPU-intensive processes such as screen recording generate heat
+- Unusual delays when opening banking applications: an overlay being rendered creates a brief but detectable lag
+- Screen briefly lighting up when the device should be idle: a sign that a background process is activating the display
+- Banking app behaving unexpectedly: buttons appearing to be tapped, screens navigating without user input
+
+### 7.2 Account-Level Indicators
+
+-	Transaction notifications for operations you did not initiate: even small test transactions (threat actors frequently test with small amounts before large transfers)
+-	OTP messages arriving when you have not initiated any transaction
+-	Failed login attempts to your banking account from unfamiliar sessions (if your bank provides login history)
+-	Account balance discrepancies
+
+### 7.3 How to Audit Your Device
+
+1. Go to Settings → Accessibility → Installed Services: any application listed here that is not a known, trusted accessibility tool (e.g., a screen reader you deliberately installed) should be treated as suspicious and investigated immediately.
+2.	Go to Settings → Apps → [select app] → Permissions: review what permissions each unfamiliar application has been granted. `READ_SMS` and Notification Access are particularly high-risk.
+3.	Go to Settings → Security → Device Admin Apps — any application listed here that is not Google's own services or a known MDM solution is a serious red flag.
+4.	Install a reputable mobile antivirus application (Bitdefender Mobile Security, Kaspersky for Android) from the official Play Store and run a full scan.
+5.	Check Settings → Battery → Battery Usage — examine which apps are consuming battery in the background. Unfamiliar applications with high background usage are suspicious.
+
 
