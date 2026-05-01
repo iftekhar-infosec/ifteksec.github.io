@@ -248,6 +248,7 @@ Implementation: Register the banking SIM number with every bank account and MFS 
 -	Avoid using rooted devices for banking: root access removes the OS-level sandboxing that provides baseline security isolation between apps.
 
 8.2 Financial Institution Mitigation
+
 8.2.1 Behavioral & Device Analytics
 Banks and MFS providers should implement real-time behavioral analytics that extend beyond simple device fingerprinting to include:
 •	Detection of Accessibility Service being active on the device at the time of transaction — this is an accessible signal via the Android APIs when the banking app is in the foreground, and its presence during a transaction should trigger elevated scrutiny.
@@ -273,5 +274,17 @@ Banks and MFS providers should implement real-time behavioral analytics that ext
 •	Require social media platforms operating in Bangladesh to implement enhanced verification for financial application advertisements and provide automated mechanisms for reporting suspected malware distribution campaigns.
 •	Expand the national curriculum for digital literacy programs to include practical cybersecurity education — specifically covering permission awareness, sideloading risks, and safe banking practices.
 
+## 9. Prioritized Recommendations
+
+| ID	| Recommendation	| Rationale / Expected Outcome |
+|-----|-----------------|------------------------------|
+| R-01	| Physical OTP Isolation via Separate Feature Phone	| Register banking SIM on a basic keypad phone. This single action neutralizes the OTP interception attack vector entirely regardless of smartphone compromise status. |
+| R-02	| Never Sideload Applications	| Install exclusively from Google Play Store. Treat all social media advertisement-driven app downloads as malicious by default. |
+| R-03	| Deny Accessibility Service to Unknown Apps	| Immediately revoke Accessibility Service access from any application that is not a known, trusted screen reader. |
+| R-04	| Bank: Implement Accessibility Detection in Apps	| Banking apps should check for active Accessibility Services and warn users or block high-value transactions when detected. |
+| R-05	| Bank: Transaction Cooling-Off Period | Implement a mandatory 60-second cancellation window for high-value transactions with explicit recipient/amount display in the OTP message. |
+| R-06	| OS: Keep Android Updated	| Security patches in Android 11–14 significantly restrict background app behavior. Upgrade from Android 8/9 as a priority. |
+| R-07	| Regulator: Mandatory App Security Standards	BFIU/Bangladesh Bank should mandate minimum technical security standards for all licensed MFS mobile applications. |
+| R-08	| Regulator: Social Media Ad Verification	Require BTRC to implement protocols with Meta/Facebook for rapid takedown of fraudulent application advertisements. |
 
 
